@@ -25,6 +25,6 @@ public class StatsController {
 
     @GetMapping("/stats")
     public List<ViewStatsDto> getStats(ViewStatsRequest request) {
-        return statsService.getStats(request.start(), request.end(), request.uris(), request.unique());
+        return statsService.getStats(request.getStart(), request.getEnd(), request.getUris(), request.isUnique());
     }
 }
