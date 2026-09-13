@@ -17,10 +17,10 @@ public class CompilationController {
     private final CompilationService compilationService;
 
     @GetMapping
-    public List<CompilationDto> getCompilations(@RequestParam(required = false) Boolean Pinned,
-                                                @RequestParam(defaultValue = "0") Integer From,
+    public List<CompilationDto> getCompilations(@RequestParam(required = false) Boolean pinned,
+                                                @RequestParam(defaultValue = "0") Integer from,
                                                 @RequestParam(defaultValue = "10") Integer size) {
-        return compilationService.getCompilations(Pinned, From, size);
+        return compilationService.getCompilations(pinned, from, size);
     }
 
     @GetMapping("/{compId}")
