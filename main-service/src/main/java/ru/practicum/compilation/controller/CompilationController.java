@@ -1,7 +1,6 @@
 package ru.practicum.compilation.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.compilation.dto.CompilationDto;
 import ru.practicum.compilation.service.CompilationService;
@@ -10,7 +9,6 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@Controller
 @RequestMapping("/compilations")
 public class CompilationController {
 

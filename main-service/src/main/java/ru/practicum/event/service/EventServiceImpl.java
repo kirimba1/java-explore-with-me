@@ -9,7 +9,6 @@ import ru.practicum.StatsClient;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.repository.CategoryRepository;
 import ru.practicum.dto.EndpointHitDto;
-import ru.practicum.dto.ViewStatsDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
@@ -22,11 +21,9 @@ import ru.practicum.user.model.User;
 import ru.practicum.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -34,14 +31,12 @@ import java.util.stream.Collectors;
 public class EventServiceImpl implements EventService {
 
     private static final String APP_NAME = "ewm-main-service";
-    private static final DateTimeFormatter DATE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final LocalDateTime STATS_EPOCH =
-            LocalDateTime.of(1970, 1, 1, 0, 0);
+    private static final LocalDateTime STATS_EPOCH = LocalDateTime.of(1970, 1, 1, 0, 0);
 
     private final EventRepository eventRepository;
     private final EventMapper eventMapper;
     private final StatsClient statsClient;
+    private final EventViewsService eventViewsService;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
@@ -69,7 +64,7 @@ public class EventServiceImpl implements EventService {
             return List.of();
         }
 
-        Map<String, Long> views = getViewsMap(toUris(events), effectiveStart, rangeEnd);
+        Map<String, Long> views = eventViewsService.getViewsMap(toUris(events), effectiveStart, rangeEnd);
 
         if ("VIEWS".equals(sort)) {
             events.sort(Comparator.comparing(
@@ -98,7 +93,7 @@ public class EventServiceImpl implements EventService {
         String uri = eventUri(eventId);
         sendHit(uri, ip);
 
-        int views = getViewsMap(List.of(uri), event.getCreatedOn(), null)
+        int views = eventViewsService.getViewsMap(List.of(uri), event.getCreatedOn(), null)
                 .getOrDefault(uri, 0L).intValue();
 
         EventFullDto eventFullDto = eventMapper.toFullDto(event, views, event.getConfirmedRequests());
@@ -126,7 +121,7 @@ public class EventServiceImpl implements EventService {
             return List.of();
         }
 
-        Map<String, Long> views = getViewsMap(toUris(events), rangeStart, rangeEnd);
+        Map<String, Long> views = eventViewsService.getViewsMap(toUris(events), rangeStart, rangeEnd);
 
         return paginateEvents(events, from, size).stream()
                 .map(event -> eventMapper.toFullDto(
@@ -174,7 +169,7 @@ public class EventServiceImpl implements EventService {
             return List.of();
         }
 
-        Map<String, Long> views = getViewsMap(toUris(events), STATS_EPOCH, null);
+        Map<String, Long> views = eventViewsService.getViewsMap(toUris(events), STATS_EPOCH, null);
 
         return events.stream()
                 .map(event -> eventMapper.toShortDto(
@@ -215,7 +210,7 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> notFound(eventId));
 
         String uri = eventUri(eventId);
-        int views = getViewsMap(List.of(uri), event.getCreatedOn(), null)
+        int views = eventViewsService.getViewsMap(List.of(uri), event.getCreatedOn(), null)
                 .getOrDefault(uri, 0L).intValue();
 
         return eventMapper.toFullDto(event, views, event.getConfirmedRequests());
@@ -322,19 +317,5 @@ public class EventServiceImpl implements EventService {
 
     private void sendHit(String uri, String ip) {
         statsClient.sendHit(new EndpointHitDto(null, APP_NAME, uri, ip, LocalDateTime.now()));
-    }
-
-    private Map<String, Long> getViewsMap(List<String> uris, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
-        LocalDateTime start = rangeStart != null ? rangeStart : STATS_EPOCH;
-        LocalDateTime end = rangeEnd != null ? rangeEnd : LocalDateTime.now();
-
-        List<ViewStatsDto> stats = statsClient.getStats(
-                start.format(DATE_TIME_FORMATTER),
-                end.format(DATE_TIME_FORMATTER),
-                uris
-        );
-
-        return stats.stream()
-                .collect(Collectors.toMap(ViewStatsDto::getUri, ViewStatsDto::getHits));
     }
 }

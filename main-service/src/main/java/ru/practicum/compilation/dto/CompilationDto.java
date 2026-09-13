@@ -3,17 +3,17 @@ package ru.practicum.compilation.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Value;
-import ru.practicum.event.model.Event;
+import ru.practicum.event.dto.EventShortDto;
 
 import java.util.List;
 
 @Value
 public class CompilationDto {
     @NotNull
-    Integer id;
+    Long id;
     @NotNull
     Boolean pinned;
     @NotBlank
     String title;
-    List<Event> events;
+    List<EventShortDto> events;
 }

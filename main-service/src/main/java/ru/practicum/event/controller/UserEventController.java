@@ -1,6 +1,8 @@
 package ru.practicum.event.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.EventShortDto;
@@ -25,8 +27,9 @@ public class UserEventController {
     }
 
     @PostMapping("/{userId}/events")
+    @ResponseStatus(HttpStatus.CREATED)
     public EventFullDto addUserEvents(@PathVariable Long userId,
-                                      @RequestBody NewEventDto newEventDto) {
+                                      @Valid @RequestBody NewEventDto newEventDto) {
         return eventService.addUserEvents(userId, newEventDto);
     }
 
