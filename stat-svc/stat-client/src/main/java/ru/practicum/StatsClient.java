@@ -36,4 +36,18 @@ public class StatsClient {
                 .body(new ParameterizedTypeReference<>() {
                 });
     }
+
+    public List<ViewStatsDto> getStats(String start, String end, List<String> uris) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/stats")
+                        .queryParam("start", start)
+                        .queryParam("end", end)
+                        .queryParam("uris", uris)
+                        .build())
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                      }
+                );
+    }
 }
