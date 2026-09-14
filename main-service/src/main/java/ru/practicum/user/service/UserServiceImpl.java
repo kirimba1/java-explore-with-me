@@ -24,6 +24,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> getUsers(List<Integer> ids, Integer from, Integer size) {
+        from = from == null ? 0 : from;
+        size = size == null ? 10 : size;
 
         if (ids == null) {
             Pageable pageable = PageRequest.of(from / size, size);

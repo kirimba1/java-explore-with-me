@@ -15,6 +15,7 @@ import ru.practicum.event.model.Event;
 import ru.practicum.event.model.EventState;
 import ru.practicum.event.model.StateAction;
 import ru.practicum.event.repository.EventRepository;
+import ru.practicum.exception.BadRequestException;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.user.model.User;
@@ -48,14 +49,32 @@ public class EventServiceImpl implements EventService {
     ) {
         log.info("Getting public events");
 
-        LocalDateTime effectiveStart = rangeStart;
-        if (rangeStart == null && rangeEnd == null) {
-            effectiveStart = LocalDateTime.now();
+        if (rangeStart != null
+                && rangeEnd != null
+                && rangeStart.isAfter(rangeEnd)) {
+            throw new BadRequestException("rangeStart must be before rangeEnd");
+        }
+
+        if (sort != null
+                && !"VIEWS".equals(sort)
+                && !"EVENT_DATE".equals(sort)) {
+            throw new BadRequestException("Unknown sort: " + sort);
+        }
+
+        text = text == null ? "" : text;
+
+        if (categories != null && categories.isEmpty()) {
+            categories = null;
         }
 
         List<Event> events = eventRepository.findPublicEvents(
-                EventState.PUBLISHED, text == null ? null : text.toLowerCase(),
-                categories, paid, effectiveStart, rangeEnd, onlyAvailable
+                EventState.PUBLISHED,
+                text.toLowerCase(),
+                categories,
+                paid,
+                rangeStart,
+                rangeEnd,
+                onlyAvailable
         );
 
         sendHit("/events", ip);
@@ -64,7 +83,11 @@ public class EventServiceImpl implements EventService {
             return List.of();
         }
 
-        Map<String, Long> views = eventViewsService.getViewsMap(toUris(events), effectiveStart, rangeEnd);
+        Map<String, Long> views = eventViewsService.getViewsMap(
+                toUris(events),
+                rangeStart,
+                rangeEnd
+        );
 
         if ("VIEWS".equals(sort)) {
             events.sort(Comparator.comparing(
@@ -77,7 +100,9 @@ public class EventServiceImpl implements EventService {
 
         return paginateEvents(events, from, size).stream()
                 .map(event -> eventMapper.toShortDto(
-                        event, viewsFor(event, views).intValue(), event.getConfirmedRequests()
+                        event,
+                        viewsFor(event, views).intValue(),
+                        event.getConfirmedRequests()
                 ))
                 .toList();
     }
@@ -111,12 +136,20 @@ public class EventServiceImpl implements EventService {
     ) {
         log.info("Getting admin events");
 
-        List<EventState> eventStates = states == null ? null : states.stream().map(EventState::valueOf).toList();
+        boolean usersEmpty = users == null || users.isEmpty();
+        boolean statesEmpty = states == null || states.isEmpty();
+        boolean categoriesEmpty = categories == null || categories.isEmpty();
+
+        List<Long> userIds = usersEmpty ? List.of(-1L) : users;
+        List<EventState> eventStates = statesEmpty
+                ? List.of(EventState.PENDING)
+                : states.stream().map(EventState::valueOf).toList();
+        List<Long> categoryIds = categoriesEmpty ? List.of(-1L) : categories;
 
         List<Event> events = eventRepository.findAdminEvents(
-                users, eventStates, categories, rangeStart, rangeEnd
+                userIds, eventStates, categoryIds, rangeStart,
+                rangeEnd, usersEmpty, statesEmpty, categoriesEmpty
         );
-
         if (events.isEmpty()) {
             return List.of();
         }
@@ -194,6 +227,9 @@ public class EventServiceImpl implements EventService {
         event.setState(EventState.PENDING);
         event.setCreatedOn(LocalDateTime.now());
         event.setConfirmedRequests(0);
+        event.setPaid(dto.getPaid() != null ? dto.getPaid() : false);
+        event.setParticipantLimit(dto.getParticipantLimit() != null ? dto.getParticipantLimit() : 0);
+        event.setRequestModeration(dto.getRequestModeration() != null ? dto.getRequestModeration() : true);
 
         Event savedEvent = eventRepository.save(event);
 
@@ -253,9 +289,10 @@ public class EventServiceImpl implements EventService {
     private void applyStateAction(UpdateEventAdminRequestDto dto, Event event) {
         if (dto.getStateAction() == StateAction.PUBLISH_EVENT) {
             if (event.getState() != EventState.PENDING) {
-                throw new ConflictException(
-                        "Cannot publish the event because it's not in the right state: "
-                                + event.getState());
+                throw new ConflictException("Cannot publish the event because it's not in the right state: " + event.getState());
+            }
+            if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
+                throw new ConflictException("Event date must be at least one hour after publication");
             }
             event.setState(EventState.PUBLISHED);
             event.setPublishedOn(LocalDateTime.now());
@@ -269,8 +306,7 @@ public class EventServiceImpl implements EventService {
 
     private void applyLocation(LocationDto location, Event event) {
         if (location != null) {
-            event.setLat(location.getLat());
-            event.setLon(location.getLon());
+            event.setLocation(eventMapper.toEntity(location));
         }
     }
 
@@ -310,9 +346,11 @@ public class EventServiceImpl implements EventService {
     }
 
     private List<Event> paginateEvents(List<Event> events, Integer from, Integer size) {
-        int start = Math.min(from, events.size());
-        int end = Math.min(start + size, events.size());
-        return events.subList(start, end);
+        if (from >= events.size()) {
+            return List.of();
+        }
+        int end = Math.min(from + size, events.size());
+        return events.subList(from, end);
     }
 
     private void sendHit(String uri, String ip) {

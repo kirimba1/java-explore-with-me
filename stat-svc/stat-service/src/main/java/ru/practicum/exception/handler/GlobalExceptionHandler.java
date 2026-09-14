@@ -2,6 +2,7 @@ package ru.practicum.exception.handler;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,6 +20,18 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .error("Ошибка валидации")
                 .message(e.getMessage())
+                .build();
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        log.warn("Response Status 400: validation error", e);
+
+        return ApiError.builder()
+                .status(HttpStatus.BAD_REQUEST)
+                .error("Ошибка валидации")
+                .message("Некорректные параметры запроса")
                 .build();
     }
 

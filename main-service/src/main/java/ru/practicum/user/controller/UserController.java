@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @Slf4j
-@RequestMapping(path = "/admin/users")
+@RequestMapping("/admin/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -23,8 +23,8 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     public List<UserDto> getUsers(
             @RequestParam(required = false) List<Integer> ids,
-            @RequestParam(required = false) Integer from,
-            @RequestParam(required = false) Integer size) {
+            @RequestParam(defaultValue = "0") Integer from,
+            @RequestParam(defaultValue = "10") Integer size) {
         return userService.getUsers(ids, from, size);
     }
 

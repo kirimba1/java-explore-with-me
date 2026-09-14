@@ -69,6 +69,7 @@ public class CompilationServiceImpl implements CompilationService {
         log.info("Creating compilation: title={}", newCompilationDto.getTitle());
 
         Compilation compilation = compilationMapper.toEntity(newCompilationDto);
+        compilation.setPinned(Boolean.TRUE.equals(newCompilationDto.getPinned()));
         compilation.setEvents(resolveEvents(newCompilationDto.getEvents()));
 
         Compilation savedCompilation = compilationRepository.save(compilation);

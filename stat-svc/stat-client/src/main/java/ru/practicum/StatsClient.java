@@ -37,13 +37,14 @@ public class StatsClient {
                 });
     }
 
-    public List<ViewStatsDto> getStats(String start, String end, List<String> uris) {
+    public List<ViewStatsDto> getStats(String start, String end, List<String> uris, boolean unique) {
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/stats")
                         .queryParam("start", start)
                         .queryParam("end", end)
                         .queryParam("uris", uris)
+                        .queryParam("unique", unique)
                         .build())
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {

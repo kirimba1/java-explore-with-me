@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.EventState;
@@ -18,15 +19,16 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             SELECT e FROM Event e
             WHERE e.state = :state
-              AND (:text IS NULL
-                   OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%'))
+              AND (LOWER(e.annotation) LIKE LOWER(CONCAT('%', :text, '%'))
                    OR LOWER(e.description) LIKE LOWER(CONCAT('%', :text, '%')))
               AND (:categories IS NULL OR e.category.id IN :categories)
-              AND (:paid IS NULL OR e.paid = :paid)
-              AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart)
-              AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd)
-              AND (:onlyAvailable = false
-                   OR COALESCE(e.confirmedRequests, 0) < e.participantLimit)
+              AND e.paid = COALESCE(:paid, e.paid)
+              AND e.eventDate >= COALESCE(:rangeStart, e.eventDate)
+              AND e.eventDate <= COALESCE(:rangeEnd, e.eventDate)
+              AND (
+                  COALESCE(:onlyAvailable, false) = false
+                  OR COALESCE(e.confirmedRequests, 0) < e.participantLimit
+              )
             """)
     List<Event> findPublicEvents(
             EventState state, String text, List<Long> categories,
@@ -37,15 +39,21 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("""
             SELECT e FROM Event e
-            WHERE (:users IS NULL OR e.initiator.id IN :users)
-              AND (:states IS NULL OR e.state IN :states)
-              AND (:categories IS NULL OR e.category.id IN :categories)
-              AND (:rangeStart IS NULL OR e.eventDate >= :rangeStart)
-              AND (:rangeEnd IS NULL OR e.eventDate <= :rangeEnd)
+            WHERE (:usersEmpty = true OR e.initiator.id IN :users)
+              AND (:statesEmpty = true OR e.state IN :states)
+              AND (:categoriesEmpty = true OR e.category.id IN :categories)
+              AND e.eventDate >= COALESCE(:rangeStart, e.eventDate)
+              AND e.eventDate <= COALESCE(:rangeEnd, e.eventDate)
             """)
     List<Event> findAdminEvents(
-            List<Long> users, List<EventState> states, List<Long> categories,
-            LocalDateTime rangeStart, LocalDateTime rangeEnd
+            @Param("users") List<Long> users,
+            @Param("states") List<EventState> states,
+            @Param("categories") List<Long> categories,
+            @Param("rangeStart") LocalDateTime rangeStart,
+            @Param("rangeEnd") LocalDateTime rangeEnd,
+            @Param("usersEmpty") boolean usersEmpty,
+            @Param("statesEmpty") boolean statesEmpty,
+            @Param("categoriesEmpty") boolean categoriesEmpty
     );
 
     Page<Event> findByInitiatorId(Long userId, Pageable pageable);

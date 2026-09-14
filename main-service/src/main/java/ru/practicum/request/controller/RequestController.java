@@ -1,5 +1,6 @@
 package ru.practicum.request.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ public class RequestController {
     }
 
     @PostMapping("/{userId}/requests")
+    @ResponseStatus(HttpStatus.CREATED)
     public ParticipationRequestDto addRequestPrivate(@PathVariable Long userId,
                                                      @RequestParam Long eventId) {
         return requestService.addRequestPrivate(userId, eventId);
@@ -44,7 +46,7 @@ public class RequestController {
     @PatchMapping("/{userId}/events/{eventId}/requests")
     public EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable Long userId,
                                                                @PathVariable Long eventId,
-                                                               @RequestBody EventRequestStatusUpdateRequest dto) {
+                                                               @Valid @RequestBody EventRequestStatusUpdateRequest dto) {
         return requestService.updateRequestsStatus(userId, eventId, dto);
     }
 }

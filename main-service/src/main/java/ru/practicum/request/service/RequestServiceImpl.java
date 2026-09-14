@@ -40,7 +40,9 @@ public class RequestServiceImpl implements RequestService {
                 .orElseThrow(() ->
                         new NotFoundException("User with id=" + userId + " was not found"));
 
-        return requestRepository.findAllByUserId(userId);
+        return requestRepository.findAllByUserId(userId).stream()
+                .map(requestMapper::toDto)
+                .toList();
     }
 
     @Override
@@ -77,7 +79,10 @@ public class RequestServiceImpl implements RequestService {
         request.setEvent(event);
         request.setCreated(LocalDateTime.now());
 
-        if (!event.getRequestModeration()) {
+        boolean moderationNotRequired = event.getParticipantLimit() == 0
+                || Boolean.FALSE.equals(event.getRequestModeration());
+
+        if (moderationNotRequired) {
             request.setStatus(ParticipationStatus.CONFIRMED);
             event.setConfirmedRequests(event.getConfirmedRequests() + 1);
             eventRepository.save(event);
@@ -103,6 +108,12 @@ public class RequestServiceImpl implements RequestService {
         if (!request.getUser().getId().equals(userId)) {
             throw new NotFoundException(
                     "Request with id=" + requestId + " was not found");
+        }
+
+        if (request.getStatus() == ParticipationStatus.CONFIRMED) {
+            Event event = request.getEvent();
+            event.setConfirmedRequests(event.getConfirmedRequests() - 1);
+            eventRepository.save(event);
         }
 
         request.setStatus(ParticipationStatus.CANCELED);

@@ -21,13 +21,13 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(nullable = false)
+    @Column(length = 120, nullable = false)
     String title;
 
-    @Column(nullable = false)
+    @Column(length = 2000, nullable = false)
     String annotation;
 
-    @Column(nullable = false)
+    @Column(length = 7000, nullable = false)
     String description;
 
     @Enumerated(EnumType.STRING)
@@ -54,11 +54,8 @@ public class Event {
     @Column(name = "created_on", nullable = false)
     LocalDateTime createdOn;
 
-    @Column(nullable = false)
-    Double lat;
-
-    @Column(nullable = false)
-    Double lon;
+    @Embedded
+    Location location;
 
     @Column(name = "request_moderation", nullable = false)
     Boolean requestModeration;

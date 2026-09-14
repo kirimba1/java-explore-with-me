@@ -32,7 +32,8 @@ public class EventViewsService {
         List<ViewStatsDto> stats = statsClient.getStats(
                 start.format(DATE_TIME_FORMATTER),
                 end.format(DATE_TIME_FORMATTER),
-                uris
+                uris,
+                true
         );
 
         return stats.stream()

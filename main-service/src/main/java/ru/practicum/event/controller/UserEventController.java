@@ -42,7 +42,7 @@ public class UserEventController {
     @PatchMapping("/{userId}/events/{eventId}")
     public EventFullDto updateUserEvent(@PathVariable Long userId,
                                         @PathVariable Long eventId,
-                                        @RequestBody UpdateEventUserRequestDto dto) {
+                                        @Valid @RequestBody UpdateEventUserRequestDto dto) {
         return eventService.updateUserEvent(userId, eventId, dto);
     }
 }
