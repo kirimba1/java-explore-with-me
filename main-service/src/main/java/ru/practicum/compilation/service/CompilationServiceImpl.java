@@ -12,7 +12,6 @@ import ru.practicum.compilation.dto.UpdateCompilationRequest;
 import ru.practicum.compilation.mapper.CompilationMapper;
 import ru.practicum.compilation.model.Compilation;
 import ru.practicum.compilation.repository.CompilationRepository;
-import ru.practicum.event.dto.EventShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.repository.EventRepository;
@@ -43,8 +42,16 @@ public class CompilationServiceImpl implements CompilationService {
                 ? compilationRepository.findAll(pageable)
                 : compilationRepository.findAllByPinned(pinned, pageable);
 
+        List<Event> allEvents = compilations.stream()
+                .flatMap(c -> c.getEvents().stream())
+                .toList();
+
+        Map<String, Long> views = eventViewsService.getViewsMap(
+                allEvents.stream().map(e -> "/events/" + e.getId()).toList(), null, null
+        );
+
         return compilations.stream()
-                .map(this::toDto)
+                .map(compilation -> toDto(compilation, views))
                 .toList();
     }
 
@@ -52,7 +59,10 @@ public class CompilationServiceImpl implements CompilationService {
     public CompilationDto getCompilationById(Long compId) {
         log.info("Getting compilation with id={}", compId);
 
-        return toDto(findCompilation(compId));
+        Compilation compilation = findCompilation(compId);
+        Map<String, Long> views = viewsFor(compilation.getEvents());
+
+        return toDto(compilation, views);
     }
 
     @Override
@@ -76,7 +86,7 @@ public class CompilationServiceImpl implements CompilationService {
 
         log.info("Creating compilation successfully: title={}", savedCompilation.getTitle());
 
-        return toDto(savedCompilation);
+        return toDto(savedCompilation, viewsFor(savedCompilation.getEvents()));
     }
 
     @Override
@@ -95,33 +105,30 @@ public class CompilationServiceImpl implements CompilationService {
 
         log.info("Updating compilation successfully: title={}", savedCompilation.getTitle());
 
-        return toDto(savedCompilation);
+        return toDto(savedCompilation, viewsFor(savedCompilation.getEvents()));
     }
 
-    private CompilationDto toDto(Compilation compilation) {
+    private CompilationDto toDto(Compilation compilation, Map<String, Long> views) {
         return new CompilationDto(
                 compilation.getId(),
                 compilation.getPinned(),
                 compilation.getTitle(),
-                toShortDtos(compilation.getEvents())
+                compilation.getEvents().stream()
+                        .map(event -> eventMapper.toShortDto(
+                                event,
+                                views.getOrDefault("/events/" + event.getId(), 0L).intValue(),
+                                event.getConfirmedRequests()
+                        ))
+                        .toList()
         );
     }
 
-    private List<EventShortDto> toShortDtos(List<Event> events) {
+    private Map<String, Long> viewsFor(List<Event> events) {
         if (events.isEmpty()) {
-            return List.of();
+            return Map.of();
         }
-
         List<String> uris = events.stream().map(e -> "/events/" + e.getId()).toList();
-        Map<String, Long> views = eventViewsService.getViewsMap(uris, null, null);
-
-        return events.stream()
-                .map(event -> eventMapper.toShortDto(
-                        event,
-                        views.getOrDefault("/events/" + event.getId(), 0L).intValue(),
-                        event.getConfirmedRequests()
-                ))
-                .toList();
+        return eventViewsService.getViewsMap(uris, null, null);
     }
 
     private Compilation findCompilation(Long compId) {

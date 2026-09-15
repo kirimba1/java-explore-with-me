@@ -91,7 +91,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public CategoryDto updateCategory(Long catId, CategoryDto categoryDto) {
+    public CategoryDto updateCategory(Long catId, NewCategoryDto categoryDto) {
         log.info("Updating category: id={}, name={}", catId, categoryDto.getName());
 
         Category category = categoryRepository.findById(catId)

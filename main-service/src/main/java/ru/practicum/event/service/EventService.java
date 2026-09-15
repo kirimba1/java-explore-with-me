@@ -2,21 +2,18 @@ package ru.practicum.event.service;
 
 import ru.practicum.event.dto.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public interface EventService {
 
     List<EventShortDto> getEvents(
-            String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart, LocalDateTime rangeEnd,
-            Boolean onlyAvailable, String sort, Integer from, Integer size, String ip
+            EventsFilter eventsFilter, Integer from, Integer size, String ip
     );
 
     EventFullDto getEventsById(Long id, String ip);
 
     List<EventFullDto> getAdminEvents(
-            List<Long> users, List<String> states, List<Long> categories,
-            LocalDateTime rangeStart, LocalDateTime rangeEnd,
+            AdminEventsFilter adminEventsFilter,
             Integer from, Integer size
     );
 

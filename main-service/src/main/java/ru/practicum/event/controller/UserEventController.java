@@ -1,6 +1,8 @@
 package ru.practicum.event.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -21,8 +23,8 @@ public class UserEventController {
 
     @GetMapping("/{userId}/events")
     public List<EventShortDto> getUserEvents(@PathVariable Long userId,
-                                             @RequestParam(defaultValue = "0") Integer from,
-                                             @RequestParam(defaultValue = "10") Integer size) {
+                                             @Positive @RequestParam(defaultValue = "0") Integer from,
+                                             @PositiveOrZero @RequestParam(defaultValue = "10") Integer size) {
         return eventService.getUserEvents(userId, from, size);
     }
 

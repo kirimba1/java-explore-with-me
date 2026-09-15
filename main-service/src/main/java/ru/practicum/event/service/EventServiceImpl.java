@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import ru.practicum.StatsClient;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.repository.CategoryRepository;
-import ru.practicum.dto.EndpointHitDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
@@ -31,7 +30,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EventServiceImpl implements EventService {
 
-    private static final String APP_NAME = "ewm-main-service";
     private static final LocalDateTime STATS_EPOCH = LocalDateTime.of(1970, 1, 1, 0, 0);
 
     private final EventRepository eventRepository;
@@ -42,52 +40,46 @@ public class EventServiceImpl implements EventService {
     private final UserRepository userRepository;
 
     @Override
-    public List<EventShortDto> getEvents(
-            String text, List<Long> categories, Boolean paid,
-            LocalDateTime rangeStart, LocalDateTime rangeEnd, Boolean onlyAvailable,
-            String sort, Integer from, Integer size, String ip
-    ) {
-        log.info("Getting public events");
+    public List<EventShortDto> getEvents(EventsFilter filter, Integer from, Integer size, String ip) {
 
-        if (rangeStart != null
-                && rangeEnd != null
-                && rangeStart.isAfter(rangeEnd)) {
+        LocalDateTime rangeStart = filter.getRangeStart();
+        LocalDateTime rangeEnd = filter.getRangeEnd();
+        String sort = filter.getSort();
+        Boolean onlyAvailable = filter.getOnlyAvailable();
+        Boolean paid = filter.getPaid();
+
+        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
             throw new BadRequestException("rangeStart must be before rangeEnd");
         }
 
-        if (sort != null
-                && !"VIEWS".equals(sort)
-                && !"EVENT_DATE".equals(sort)) {
+        if (sort != null && !"VIEWS".equals(sort) && !"EVENT_DATE".equals(sort)) {
             throw new BadRequestException("Unknown sort: " + sort);
         }
 
-        text = text == null ? "" : text;
+        String text = filter.getText() == null ? "" : filter.getText();
 
+        List<Long> categories = filter.getCategories();
         if (categories != null && categories.isEmpty()) {
             categories = null;
         }
 
+        LocalDateTime effectiveStart = rangeStart;
+        if (rangeStart == null && rangeEnd == null) {
+            effectiveStart = LocalDateTime.now();
+        }
+
         List<Event> events = eventRepository.findPublicEvents(
-                EventState.PUBLISHED,
-                text.toLowerCase(),
-                categories,
-                paid,
-                rangeStart,
-                rangeEnd,
-                onlyAvailable
+                EventState.PUBLISHED, text.toLowerCase(), categories,
+                paid, effectiveStart, rangeEnd, onlyAvailable
         );
 
-        sendHit("/events", ip);
+        statsClient.sendHit("/events", ip);
 
         if (events.isEmpty()) {
             return List.of();
         }
 
-        Map<String, Long> views = eventViewsService.getViewsMap(
-                toUris(events),
-                rangeStart,
-                rangeEnd
-        );
+        Map<String, Long> views = eventViewsService.getViewsMap(toUris(events), effectiveStart, rangeEnd);
 
         if ("VIEWS".equals(sort)) {
             events.sort(Comparator.comparing(
@@ -100,9 +92,7 @@ public class EventServiceImpl implements EventService {
 
         return paginateEvents(events, from, size).stream()
                 .map(event -> eventMapper.toShortDto(
-                        event,
-                        viewsFor(event, views).intValue(),
-                        event.getConfirmedRequests()
+                        event, viewsFor(event, views).intValue(), event.getConfirmedRequests()
                 ))
                 .toList();
     }
@@ -116,7 +106,7 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> notFound(eventId));
 
         String uri = eventUri(eventId);
-        sendHit(uri, ip);
+        statsClient.sendHit(uri, ip);
 
         int views = eventViewsService.getViewsMap(List.of(uri), event.getCreatedOn(), null)
                 .getOrDefault(uri, 0L).intValue();
@@ -129,12 +119,13 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventFullDto> getAdminEvents(
-            List<Long> users, List<String> states, List<Long> categories,
-            LocalDateTime rangeStart, LocalDateTime rangeEnd,
-            Integer from, Integer size
-    ) {
-        log.info("Getting admin events");
+    public List<EventFullDto> getAdminEvents(AdminEventsFilter filter, Integer from, Integer size) {
+
+        List<Long> users = filter.getUsers();
+        List<String> states = filter.getStates();
+        List<Long> categories = filter.getCategories();
+        LocalDateTime rangeStart = filter.getRangeStart();
+        LocalDateTime rangeEnd = filter.getRangeEnd();
 
         boolean usersEmpty = users == null || users.isEmpty();
         boolean statesEmpty = states == null || states.isEmpty();
@@ -351,9 +342,5 @@ public class EventServiceImpl implements EventService {
         }
         int end = Math.min(from + size, events.size());
         return events.subList(from, end);
-    }
-
-    private void sendHit(String uri, String ip) {
-        statsClient.sendHit(new EndpointHitDto(null, APP_NAME, uri, ip, LocalDateTime.now()));
     }
 }

@@ -1,14 +1,15 @@
 package ru.practicum.event.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.event.dto.AdminEventsFilter;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.UpdateEventAdminRequestDto;
 import ru.practicum.event.service.EventService;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -20,15 +21,11 @@ public class AdminEventController {
 
     @GetMapping
     public List<EventFullDto> getAdminEvents(
-            @RequestParam(required = false) List<Long> users,
-            @RequestParam(required = false) List<String> states,
-            @RequestParam(required = false) List<Long> categories,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
-            @RequestParam(defaultValue = "0") Integer from,
-            @RequestParam(defaultValue = "10") Integer size
+            AdminEventsFilter eventsFilter,
+            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+            @RequestParam(defaultValue = "10") @Positive Integer size
     ) {
-        return eventService.getAdminEvents(users, states, categories, rangeStart, rangeEnd, from, size);
+        return eventService.getAdminEvents(eventsFilter, from, size);
     }
 
     @PatchMapping("/{eventId}")

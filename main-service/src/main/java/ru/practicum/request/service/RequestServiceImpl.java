@@ -18,7 +18,6 @@ import ru.practicum.request.repository.RequestRepository;
 import ru.practicum.user.model.User;
 import ru.practicum.user.repository.UserRepository;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,10 +73,7 @@ public class RequestServiceImpl implements RequestService {
             throw new ConflictException("Participant limit reached");
         }
 
-        Request request = new Request();
-        request.setUser(user);
-        request.setEvent(event);
-        request.setCreated(LocalDateTime.now());
+        Request request = requestMapper.toEntity(user, event);
 
         boolean moderationNotRequired = event.getParticipantLimit() == 0
                 || Boolean.FALSE.equals(event.getRequestModeration());

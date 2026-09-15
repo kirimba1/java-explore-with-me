@@ -14,6 +14,6 @@ public interface CategoryService {
 
     CategoryDto addCategory(NewCategoryDto newCategoryDto);
 
-    CategoryDto updateCategory(Long catId, CategoryDto categoryDto);
+    CategoryDto updateCategory(Long catId, NewCategoryDto categoryDto);
 
 }
