@@ -1,4 +1,4 @@
-FROM amazoncorretto:25
+FROM amazoncorretto:21
 LABEL authors="kirill"
 WORKDIR /app
 COPY target/*.jar app.jar

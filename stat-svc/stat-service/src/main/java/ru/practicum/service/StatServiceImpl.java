@@ -32,6 +32,14 @@ public class StatServiceImpl implements StatService {
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
         log.info("Get stats with parameters: start = {}, end = {}, uris = {}, unique = {}", start, end, uris, unique);
 
+        if (start == null) {
+            throw new ValidationException("Start date cannot be null");
+        }
+
+        if (end == null) {
+            throw new ValidationException("End date cannot be null");
+        }
+
         if (end.isBefore(start)) {
             throw new ValidationException("End cannot be before start date");
         }
