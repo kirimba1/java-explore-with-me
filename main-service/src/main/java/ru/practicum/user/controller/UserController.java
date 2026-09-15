@@ -6,6 +6,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.user.dto.NewUserRequestDto;
 import ru.practicum.user.dto.UserDto;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @RestController
 @Slf4j
+@Validated
 @RequestMapping("/admin/users")
 @RequiredArgsConstructor
 public class UserController {
@@ -25,8 +27,8 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     public List<UserDto> getUsers(
             @RequestParam(required = false) List<Integer> ids,
-            @Positive @RequestParam(defaultValue = "0") Integer from,
-            @PositiveOrZero @RequestParam(defaultValue = "10") Integer size) {
+            @PositiveOrZero @RequestParam(defaultValue = "0") Integer from,
+            @Positive@RequestParam(defaultValue = "10") Integer size) {
         return userService.getUsers(ids, from, size);
     }
 

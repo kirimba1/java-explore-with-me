@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.AdminEventsFilter;
 import ru.practicum.event.dto.EventFullDto;
@@ -14,6 +15,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 @RequestMapping("/admin/events")
 public class AdminEventController {
 
@@ -22,8 +24,8 @@ public class AdminEventController {
     @GetMapping
     public List<EventFullDto> getAdminEvents(
             AdminEventsFilter eventsFilter,
-            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
-            @RequestParam(defaultValue = "10") @Positive Integer size
+            @PositiveOrZero @RequestParam(defaultValue = "0") Integer from,
+            @Positive @RequestParam(defaultValue = "10") Integer size
     ) {
         return eventService.getAdminEvents(eventsFilter, from, size);
     }

@@ -24,8 +24,8 @@ public class EventController {
     @GetMapping
     public List<EventShortDto> getEvents(
             EventsFilter eventsFilter,
-            @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
-            @RequestParam(defaultValue = "10") @Positive Integer size,
+            @PositiveOrZero @RequestParam(defaultValue = "0") Integer from,
+            @Positive @RequestParam(defaultValue = "10") Integer size,
             HttpServletRequest request
     ) {
         return eventService.getEvents(
