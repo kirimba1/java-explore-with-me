@@ -1,0 +1,23 @@
+package ru.practicum.exception;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Value;
+import org.springframework.http.HttpStatus;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Value
+public class ApiError {
+
+    List<String> errors;
+
+    String message;
+
+    String reason;
+
+    HttpStatus status;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    LocalDateTime timestamp;
+}

@@ -7,21 +7,25 @@ import org.springframework.web.client.RestClient;
 import ru.practicum.dto.EndpointHitDto;
 import ru.practicum.dto.ViewStatsDto;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
 public class StatsClient {
 
     private final RestClient restClient;
+    private final String appName;
 
-    public StatsClient(@Value("${stat-service.url}") String statServiceUrl) {
+    public StatsClient(@Value("${stat-service.url}") String statServiceUrl,
+                       @Value("${stat-service.app-name}") String appName) {
         this.restClient = RestClient.builder().baseUrl(statServiceUrl).build();
+        this.appName = appName;
     }
 
-    public void sendHit(EndpointHitDto hitDto) {
+    public void sendHit(String uri, String ip) {
         restClient.post()
                 .uri("/hit")
-                .body(hitDto)
+                .body(new EndpointHitDto(appName, uri, ip, LocalDateTime.now()))
                 .retrieve()
                 .toBodilessEntity();
     }
@@ -35,5 +39,20 @@ public class StatsClient {
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });
+    }
+
+    public List<ViewStatsDto> getStats(String start, String end, List<String> uris, boolean unique) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/stats")
+                        .queryParam("start", start)
+                        .queryParam("end", end)
+                        .queryParam("uris", uris)
+                        .queryParam("unique", unique)
+                        .build())
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {
+                      }
+                );
     }
 }
