@@ -10,6 +10,7 @@
     { "key": "categoryId", "value": "" },
     { "key": "userId", "value": "" },
     { "key": "eventId", "value": "" },
+    { "key": "eventIdRejectNoComment", "value": "" },
     { "key": "eventIdNoComment", "value": "" },
     { "key": "eventIdAsUser", "value": "" }
   ],
@@ -123,11 +124,33 @@
       }]
     },
     {
-      "name": "5. Error: reject без комментария",
+      "name": "5a. Создать отдельное событие (для reject без комментария)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Событие для reject без комментария\",\n  \"annotation\": \"Аннотация минимум двадцать символов\",\n  \"description\": \"Описание события минимум двадцать символов для валидации\",\n  \"category\": {{categoryId}},\n  \"eventDate\": \"2026-12-31 18:00:00\",\n  \"paid\": false,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"location\": { \"lat\": 55.75, \"lon\": 37.62 }\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('eventIdRejectNoComment', json.id);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "5. Reject без комментария (допустимо — комментарий необязателен)",
       "request": {
         "method": "PATCH",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "url": "{{base_url}}/admin/events/{{eventId}}",
+        "url": "{{base_url}}/admin/events/{{eventIdRejectNoComment}}",
         "body": {
           "mode": "raw",
           "raw": "{\n  \"stateAction\": \"REJECT_EVENT\"\n}"
@@ -137,9 +160,10 @@
         "listen": "test",
         "script": {
           "exec": [
-            "pm.test('Status is 400 or 409', () => {",
-            "  pm.expect([400, 409]).to.include(pm.response.code);",
-            "});"
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('State is REJECTED', () => pm.expect(json.state).to.eql('REJECTED'));",
+            "pm.test('moderationComment is null', () => pm.expect(json.moderationComment).to.be.null);"
           ]
         }
       }]
@@ -353,8 +377,7 @@
         "listen": "test",
         "script": {
           "exec": [
-            "// Если добавил explicit-проверку в сервисе — ожидай 409/400.",
-            "// Если нет — эндпоинт молча проигнорирует action и вернёт 200 с state=PENDING.",
+            "pm.test('Status 409', () => pm.response.to.have.status(409));",
             "const json = pm.response.json();",
             "pm.test('State did not change to PUBLISHED', () => pm.expect(json.state).to.not.eql('PUBLISHED'));"
           ]
@@ -376,6 +399,7 @@
         "listen": "test",
         "script": {
           "exec": [
+            "pm.test('Status 409', () => pm.response.to.have.status(409));",
             "const json = pm.response.json();",
             "pm.test('State did not change to REJECTED', () => pm.expect(json.state).to.not.eql('REJECTED'));"
           ]
