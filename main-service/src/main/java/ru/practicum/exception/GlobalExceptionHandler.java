@@ -135,6 +135,15 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleMessageNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException e) {
+        log.warn("Missing request body: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(buildError(HttpStatus.BAD_REQUEST, "Incorrectly made request.",
+                        "Request body is missing", List.of()));
+    }
+
     private String formatFieldError(FieldError error) {
         return String.format(
                 "Field: %s. Error: %s. Value: %s",

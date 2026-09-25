@@ -16,6 +16,7 @@ public interface EventMapper {
     @Mapping(target = "publishedOn", ignore = true)
     @Mapping(target = "state", ignore = true)
     @Mapping(target = "category", ignore = true)
+    @Mapping(target = "moderationComment", ignore = true)
     Event toEntity(NewEventDto newEventDto);
 
     EventShortDto toShortDto(Event event, Integer views, Integer confirmedRequest);
@@ -35,6 +36,7 @@ public interface EventMapper {
     @Mapping(target = "initiator", ignore = true)
     @Mapping(target = "createdOn", ignore = true)
     @Mapping(target = "confirmedRequests", ignore = true)
+    @Mapping(target = "moderationComment", ignore = true)
     void updateEventFromDto(UpdateEventAdminRequestDto dto, @MappingTarget Event event);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -46,5 +48,6 @@ public interface EventMapper {
     @Mapping(target = "location", ignore = true)
     @Mapping(target = "createdOn", ignore = true)
     @Mapping(target = "confirmedRequests", ignore = true)
+    @Mapping(target = "moderationComment", ignore = true)
     void updateEventFromUserDto(UpdateEventUserRequestDto dto, @MappingTarget Event event);
 }

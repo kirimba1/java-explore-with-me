@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS events (
     title VARCHAR(120) NOT NULL,
     annotation VARCHAR(2000) NOT NULL,
     description VARCHAR(7000) NOT NULL,
+    moderation_comment VARCHAR(2000),
     state VARCHAR(50) NOT NULL,
     category_id BIGINT NOT NULL,
     paid BOOLEAN NOT NULL,

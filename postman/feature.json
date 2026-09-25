@@ -1,0 +1,410 @@
+{
+  "info": {
+    "name": "moderation_enhancement tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "categoryName", "value": "" },
+    { "key": "userEmail", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "eventId", "value": "" },
+    { "key": "eventIdRejectNoComment", "value": "" },
+    { "key": "eventIdNoComment", "value": "" },
+    { "key": "eventIdAsUser", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Создать категорию",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/categories",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{categoryName}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('categoryName', 'Концерты ' + Date.now());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('categoryId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Создать пользователя",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/users",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Kirill\",\n  \"email\": \"{{userEmail}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('userEmail', 'kirill' + Date.now() + '@test.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('userId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Создать событие (для полного цикла)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Тестовый концерт\",\n  \"annotation\": \"Аннотация минимум двадцать символов\",\n  \"description\": \"Описание события минимум двадцать символов для валидации\",\n  \"category\": {{categoryId}},\n  \"eventDate\": \"2026-12-31 18:00:00\",\n  \"paid\": false,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"location\": { \"lat\": 55.75, \"lon\": 37.62 }\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.test('State is PENDING', () => pm.expect(json.state).to.eql('PENDING'));",
+            "pm.test('moderationComment is null', () => pm.expect(json.moderationComment).to.be.null);",
+            "pm.collectionVariables.set('eventId', json.id);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "4. Админ: список событий на модерации",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/admin/events?states=PENDING&users={{userId}}&from=0&size=10"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Contains our event', () => {",
+            "  const ids = json.map(e => e.id);",
+            "  pm.expect(ids).to.include(pm.collectionVariables.get('eventId'));",
+            "});"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "5a. Создать отдельное событие (для reject без комментария)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Событие для reject без комментария\",\n  \"annotation\": \"Аннотация минимум двадцать символов\",\n  \"description\": \"Описание события минимум двадцать символов для валидации\",\n  \"category\": {{categoryId}},\n  \"eventDate\": \"2026-12-31 18:00:00\",\n  \"paid\": false,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"location\": { \"lat\": 55.75, \"lon\": 37.62 }\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('eventIdRejectNoComment', json.id);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "5. Reject без комментария (допустимо комментарий необязателен)",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/events/{{eventIdRejectNoComment}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"REJECT_EVENT\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('State is REJECTED', () => pm.expect(json.state).to.eql('REJECTED'));",
+            "pm.test('moderationComment is null', () => pm.expect(json.moderationComment).to.be.null);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "6. Admin: reject с комментарием",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/events/{{eventId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"REJECT_EVENT\",\n  \"moderationComment\": \"Уточните описание, слишком общее для модерации\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('State is REJECTED', () => pm.expect(json.state).to.eql('REJECTED'));",
+            "pm.test('moderationComment saved', () => pm.expect(json.moderationComment).to.eql('Уточните описание, слишком общее для модерации'));"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "7. Error: повторный reject уже отклонённого",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/events/{{eventId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"REJECT_EVENT\",\n  \"moderationComment\": \"Повторное отклонение, должно упасть\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 409', () => pm.response.to.have.status(409));"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "8. Инициатор видит комментарий",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/users/{{userId}}/events/{{eventId}}"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('State is REJECTED', () => pm.expect(json.state).to.eql('REJECTED'));",
+            "pm.test('Comment visible to initiator', () => pm.expect(json.moderationComment).to.not.be.null);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "9. Инициатор правит и отправляет заново",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events/{{eventId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"description\": \"Исправленное подробное описание события минимум двадцать символов\",\n  \"stateAction\": \"SEND_TO_REVIEW\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('State is PENDING', () => pm.expect(json.state).to.eql('PENDING'));",
+            "pm.test('moderationComment cleared', () => pm.expect(json.moderationComment).to.be.null);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "10. Admin: publish",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/events/{{eventId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"PUBLISH_EVENT\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('State is PUBLISHED', () => pm.expect(json.state).to.eql('PUBLISHED'));",
+            "pm.test('publishedOn is set', () => pm.expect(json.publishedOn).to.not.be.null);",
+            "pm.test('moderationComment is null', () => pm.expect(json.moderationComment).to.be.null);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "11. Error: повторная публикация",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/events/{{eventId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"PUBLISH_EVENT\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 409', () => pm.response.to.have.status(409));"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "12. Создать событие (для проверки, что PUBLISH без комментария не требует его)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Событие без комментария\",\n  \"annotation\": \"Аннотация минимум двадцать символов\",\n  \"description\": \"Описание события минимум двадцать символов для валидации\",\n  \"category\": {{categoryId}},\n  \"eventDate\": \"2026-12-31 18:00:00\",\n  \"paid\": false,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"location\": { \"lat\": 55.75, \"lon\": 37.62 }\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('eventIdNoComment', json.id);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "13. Publish без комментария, не должен требовать его",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/admin/events/{{eventIdNoComment}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"PUBLISH_EVENT\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('State is PUBLISHED', () => pm.expect(json.state).to.eql('PUBLISHED'));"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "14. Создать событие (для проверки user-эндпоинта)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Событие для проверки прав\",\n  \"annotation\": \"Аннотация минимум двадцать символов\",\n  \"description\": \"Описание события минимум двадцать символов для валидации\",\n  \"category\": {{categoryId}},\n  \"eventDate\": \"2026-12-31 18:00:00\",\n  \"paid\": false,\n  \"participantLimit\": 10,\n  \"requestModeration\": true,\n  \"location\": { \"lat\": 55.75, \"lon\": 37.62 }\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.collectionVariables.set('eventIdAsUser', json.id);"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "15. Error: инициатор пытается PUBLISH_EVENT через свой эндпоинт",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events/{{eventIdAsUser}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"PUBLISH_EVENT\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 409', () => pm.response.to.have.status(409));",
+            "const json = pm.response.json();",
+            "pm.test('State did not change to PUBLISHED', () => pm.expect(json.state).to.not.eql('PUBLISHED'));"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "16. Error: инициатор пытается REJECT_EVENT через свой эндпоинт",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/users/{{userId}}/events/{{eventIdAsUser}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stateAction\": \"REJECT_EVENT\"\n}"
+        }
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "pm.test('Status 409', () => pm.response.to.have.status(409));",
+            "const json = pm.response.json();",
+            "pm.test('State did not change to REJECTED', () => pm.expect(json.state).to.not.eql('REJECTED'));"
+          ]
+        }
+      }]
+    }
+  ]
+}
