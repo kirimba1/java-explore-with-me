@@ -65,4 +65,7 @@ public class Event {
 
     @Column(name = "published_on")
     LocalDateTime publishedOn;
+
+    @Column(name = "moderation_comment")
+    String moderationComment;
 }

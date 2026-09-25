@@ -250,8 +250,14 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> notFound(eventId));
 
-        if (event.getState() != EventState.PENDING && event.getState() != EventState.CANCELED) {
-            throw new ConflictException("Only pending or canceled events can be changed");
+        if (dto.getStateAction() == StateAction.PUBLISH_EVENT || dto.getStateAction() == StateAction.REJECT_EVENT) {
+            throw new ConflictException("This action is not allowed for the event initiator");
+        }
+
+        if (event.getState() != EventState.PENDING
+                && event.getState() != EventState.CANCELED
+                && event.getState() != EventState.REJECTED) {
+            throw new ConflictException("Only pending, canceled or rejected events can be changed");
         }
 
         if (dto.getEventDate() != null) {
@@ -262,6 +268,7 @@ public class EventServiceImpl implements EventService {
 
         if (dto.getStateAction() == StateAction.SEND_TO_REVIEW) {
             event.setState(EventState.PENDING);
+            event.setModerationComment(null);
         } else if (dto.getStateAction() == StateAction.CANCEL_REVIEW) {
             event.setState(EventState.CANCELED);
         }
@@ -280,18 +287,23 @@ public class EventServiceImpl implements EventService {
     private void applyStateAction(UpdateEventAdminRequestDto dto, Event event) {
         if (dto.getStateAction() == StateAction.PUBLISH_EVENT) {
             if (event.getState() != EventState.PENDING) {
-                throw new ConflictException("Cannot publish the event because it's not in the right state: " + event.getState());
-            }
-            if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-                throw new ConflictException("Event date must be at least one hour after publication");
+                throw new ConflictException(
+                        "Cannot publish the event because it's not in the right state: " + event.getState());
             }
             event.setState(EventState.PUBLISHED);
             event.setPublishedOn(LocalDateTime.now());
+            event.setModerationComment(null);
+
         } else if (dto.getStateAction() == StateAction.REJECT_EVENT) {
-            if (event.getState() == EventState.PUBLISHED) {
-                throw new ConflictException("Cannot reject a published event");
+            if (event.getState() != EventState.PENDING) {
+                throw new ConflictException(
+                        "Cannot reject the event because it's not in the right state: " + event.getState());
             }
-            event.setState(EventState.CANCELED);
+            if (dto.getModerationComment() == null || dto.getModerationComment().isBlank()) {
+                throw new ConflictException("Moderation comment is required to reject an event");
+            }
+            event.setState(EventState.REJECTED);
+            event.setModerationComment(dto.getModerationComment());
         }
     }
 

@@ -38,4 +38,5 @@ public class EventFullDto {
 
     @NotNull
     Location location;
+    String moderationComment;
 }
