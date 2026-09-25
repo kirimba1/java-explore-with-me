@@ -299,9 +299,6 @@ public class EventServiceImpl implements EventService {
                 throw new ConflictException(
                         "Cannot reject the event because it's not in the right state: " + event.getState());
             }
-            if (dto.getModerationComment() == null || dto.getModerationComment().isBlank()) {
-                throw new ConflictException("Moderation comment is required to reject an event");
-            }
             event.setState(EventState.REJECTED);
             event.setModerationComment(dto.getModerationComment());
         }
