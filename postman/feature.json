@@ -107,7 +107,7 @@
       "name": "4. Админ: список событий на модерации",
       "request": {
         "method": "GET",
-        "url": "{{base_url}}/admin/events?states=PENDING&from=0&size=10"
+        "url": "{{base_url}}/admin/events?states=PENDING&users={{userId}}&from=0&size=10"
       },
       "event": [{
         "listen": "test",
@@ -146,7 +146,7 @@
       }]
     },
     {
-      "name": "5. Reject без комментария (допустимо — комментарий необязателен)",
+      "name": "5. Reject без комментария (допустимо комментарий необязателен)",
       "request": {
         "method": "PATCH",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
